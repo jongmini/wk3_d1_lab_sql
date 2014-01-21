@@ -81,6 +81,9 @@ get '/products/:id' do
   c = PGconn.new(:host => "localhost", :dbname => dbname)
   @product = c.exec_params("SELECT * FROM products WHERE products.id = $1;", [params[:id]]).first
   c.close
+
+#similar to get '/categories/:id' do
+
   erb :product
 end
 
@@ -148,7 +151,26 @@ end
 get '/categories/:id' do
   c = PGconn.new(:host => "localhost", :dbname => dbname)
   @category = c.exec_params("SELECT * FROM categories WHERE categories.id = $1;", [params[:id]]).first
+
+  c = PGconn.new(:host => "localhost", :dbname => dbname)
+
+  # Get all rows from the products_category table.
+  prod_cat = c.exec_params("SELECT prod_id FROM product_category WHERE cat_id = $1;", [params["id"]])
+
+  #still need to fix nil case
+  if prod_cat.first["prod_id"] == nil
+    @product = "none"
+  else
+    @product = c.exec_params("SELECT products.name FROM products WHERE products.id = #{prod_cat.first["prod_id"]};").to_a
+  end
+# binding.pry
+
+
+
+
+
   c.close
+
   erb :category
 end
 

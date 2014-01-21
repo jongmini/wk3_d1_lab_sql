@@ -1,13 +1,24 @@
 <!-- category.erb -->
 
-<p> Name: <%= @category["name"] %> </p> 
-<p> <%= @category["description"] %></p>
+
+<p> Name: <%= @category["name"] %>
+ </p> 
+
+<p> <%= @category["description"] %>
+</p>
+
+
+<p>The following are items in this category: </p>
+ <ul>
+ 	<li><%= @product.join(", ") %></li>
+ </ul>
+
+
 
 <a href="<%=@category["id"]%>/edit"> Edit this category.</a>
+
+
+
 <form action="/categories/<%= @category["id"] %>/destroy" method="post">
     <input type="submit" name="" value="Delete this category.">
 </form>
-<a href="/categories"> View the category list. </a><br>
-
-<p> <%= @prod_cat.first["prod_id"] %> </p>
-<p> <%= @product.first["name"] %> </p>

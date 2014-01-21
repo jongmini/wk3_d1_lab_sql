@@ -54,9 +54,22 @@ end
 post '/products/:id' do
   c = PGconn.new(:host => "localhost", :dbname => dbname)
 
-  # Update the product.
-  c.exec_params("UPDATE products SET (name, price, description) = ($2, $3, $4) WHERE products.id = $1 ",
-                [params["id"], params["name"], params["price"], params["description"]])
+  if [params["cat_name"]].empty?
+    # Update the product.
+    c.exec_params("UPDATE products SET (name, price, description) = ($2, $3, $4) WHERE products.id = $1 ",
+                  [params["id"], params["name"], params["price"], params["description"]])
+
+  else 
+    c.exec_params("UPDATE products SET (name, price, description) = ($2, $3, $4) WHERE products.id = $1 ",
+                  [params["id"], params["name"], params["price"], params["description"]])
+
+    category_id = c.exec_params("SELECT categories.id FROM categories WHERE categories.name = $1", [params["cat_name"]]).first
+
+    # SELECT categories.id FROM categories WHERE categories.name = 'Home'; I DONT UNDERSTAND THE $1, $2 and params syntax!!!
+
+    c.exec_params("INSERT INTO product_category (prod_id, cat_id) = ($1, $2)", [params["id"], params[category_id]])
+  end
+
   c.close
   redirect "/products/#{params["id"]}"
 end
@@ -64,9 +77,16 @@ end
 get '/products/:id/edit' do
   c = PGconn.new(:host => "localhost", :dbname => dbname)
   @product = c.exec_params("SELECT * FROM products WHERE products.id = $1", [params["id"]]).first
+ 
+
   c.close
+
+
   erb :edit_product
 end
+
+
+
 # DELETE to delete a product
 post '/products/:id/destroy' do
 
@@ -76,15 +96,55 @@ post '/products/:id/destroy' do
   redirect '/products'
 end
 
+
+
+
+
 # GET the show page for a particular product
 get '/products/:id' do
   c = PGconn.new(:host => "localhost", :dbname => dbname)
-  @product = c.exec_params("SELECT * FROM products WHERE products.id = $1;", [params[:id]]).first
+  @product = c.exec_params("SELECT * FROM products WHERE products.id = $1;", [params[:id]]).first    ###
+
+  c = PGconn.new(:host => "localhost", :dbname => dbname)
+
+  # Get all rows from the products_category table.
+  prod_cat = c.exec_params("SELECT cat_id FROM product_category WHERE prod_id = $1;", [params["id"]])
+  
+  @category = prod_cat.map do |x|
+    c.exec_params("SELECT categories.name FROM categories WHERE categories.id = #{x["cat_id"]};").values.flatten
+  end
+
+  if @category == nil
+    @category = ["none"]
+
+  end
+  
   c.close
 
-#similar to get '/categories/:id' do
-
   erb :product
+end
+
+# GET the show page for a particular category
+get '/categories/:id' do
+  c = PGconn.new(:host => "localhost", :dbname => dbname)
+  @category = c.exec_params("SELECT * FROM categories WHERE categories.id = $1;", [params[:id]]).first
+
+  c = PGconn.new(:host => "localhost", :dbname => dbname)
+
+  # Get all rows from the products_category table.
+  prod_cat = c.exec_params("SELECT prod_id FROM product_category WHERE cat_id = $1;", [params[:id]])
+
+  @product = prod_cat.map do |x|
+      c.exec_params("SELECT products.name FROM products WHERE products.id = #{x["prod_id"]};").values.flatten
+  end
+
+  if @product.empty?
+    @product = ["none"]
+  end
+
+  c.close
+
+  erb :category
 end
 
 ######################################
@@ -138,6 +198,8 @@ get '/categories/:id/edit' do
   c.close
   erb :edit_category
 end
+
+
 # DELETE to delete a category
 post '/categories/:id/destroy' do
 
@@ -147,32 +209,7 @@ post '/categories/:id/destroy' do
   redirect '/categories'
 end
 
-# GET the show page for a particular category
-get '/categories/:id' do
-  c = PGconn.new(:host => "localhost", :dbname => dbname)
-  @category = c.exec_params("SELECT * FROM categories WHERE categories.id = $1;", [params[:id]]).first
 
-  c = PGconn.new(:host => "localhost", :dbname => dbname)
-
-  # Get all rows from the products_category table.
-  prod_cat = c.exec_params("SELECT prod_id FROM product_category WHERE cat_id = $1;", [params["id"]])
-
-  #still need to fix nil case
-  if prod_cat.first["prod_id"] == nil
-    @product = "none"
-  else
-    @product = c.exec_params("SELECT products.name FROM products WHERE products.id = #{prod_cat.first["prod_id"]};").to_a
-  end
-# binding.pry
-
-
-
-
-
-  c.close
-
-  erb :category
-end
 
 ######################################
 

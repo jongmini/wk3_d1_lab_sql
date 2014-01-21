@@ -1,0 +1,17 @@
+
+
+<form action="/catergories/<%=@category["id"]%>" method="post">
+  <p> 
+    <label>Name:</label>
+    <input type="text" name="name" value="<%=@category["name"]%>">
+  </p>
+
+  <p>
+    <label>Description:</label>
+    <textarea name="description"><%= @category["description"]%></textarea>
+  </p>
+
+  <p>
+    <input type="submit" name="" value="Create the new category.">
+  </p>
+</form>

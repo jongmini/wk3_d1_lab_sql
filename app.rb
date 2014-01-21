@@ -1,10 +1,10 @@
-require 'pry'
+require 'pry' 
 require 'sinatra'
 require 'sinatra/reloader'
 require 'pg'
 
 def dbname
-  "storeadminsite"
+  "wk3d1_lab"
 end
 
 def with_db
@@ -14,6 +14,7 @@ def with_db
 end
 
 get '/' do
+
   erb :index
 end
 
@@ -83,13 +84,95 @@ get '/products/:id' do
   erb :product
 end
 
-def create_products_table
+######################################
+
+# The Categories machinery:
+
+# Get the index of categories
+get '/categories' do
+  c = PGconn.new(:host => "localhost", :dbname => dbname)
+
+  # Get all rows from the categories table.
+  @categories = c.exec_params("SELECT * FROM categories;")
+  c.close
+  erb :categories
+end
+
+# Get the form for creating a new product
+get '/categories/new' do
+  erb :new_category
+end
+
+# POST to create a new category
+post '/categories' do
+  c = PGconn.new(:host => "localhost", :dbname => dbname)
+
+  # Insert the new row into the categories table.
+  c.exec_params("INSERT INTO categories (name, description) VALUES ($1,$2)",
+                  [params["name"], params["description"]])
+
+  # Assuming you created your categories table with "id SERIAL PRIMARY KEY",
+  # This will get the id of the category you just created.
+  new_category_id = c.exec_params("SELECT currval('categories_id_seq');").first["currval"]
+  c.close
+  redirect "/categories/#{new_category_id}"
+end
+
+# Update a category
+post '/categories/:id' do
+  c = PGconn.new(:host => "localhost", :dbname => dbname)
+
+  # Update the category.
+  c.exec_params("UPDATE categories SET (name, description) = ($2, $3) WHERE categories.id = $1 ",
+                [params["id"], params["name"], params["description"]])
+  c.close
+  redirect "/categories/#{params["id"]}"
+end
+
+get '/categories/:id/edit' do
+  c = PGconn.new(:host => "localhost", :dbname => dbname)
+  @category = c.exec_params("SELECT * FROM categories WHERE categories.id = $1", [params["id"]]).first
+  c.close
+  erb :edit_category
+end
+# DELETE to delete a category
+post '/categories/:id/destroy' do
+
+  c = PGconn.new(:host => "localhost", :dbname => dbname)
+  c.exec_params("DELETE FROM categories WHERE categories.id = $1", [params["id"]])
+  c.close
+  redirect '/categories'
+end
+
+# GET the show page for a particular category
+get '/categories/:id' do
+  c = PGconn.new(:host => "localhost", :dbname => dbname)
+  @category = c.exec_params("SELECT * FROM categories WHERE categories.id = $1;", [params[:id]]).first
+  c.close
+  erb :category
+end
+
+######################################
+
+def create_categories_table
   c = PGconn.new(:host => "localhost", :dbname => dbname)
   c.exec %q{
-  CREATE TABLE products (
+  CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
     name varchar(255),
     price decimal,
+    description text
+  );
+  }
+  c.close
+end
+
+def create_categories_table
+  c = PGconn.new(:host => "localhost", :dbname => dbname)
+  c.exec %q{
+  CREATE TABLE categories (
+    id SERIAL PRIMARY KEY,
+    name varchar(255),
     description text
   );
   }
@@ -117,6 +200,27 @@ def seed_products_table
   c = PGconn.new(:host => "localhost", :dbname => dbname)
   products.each do |p|
     c.exec_params("INSERT INTO products (name, price, description) VALUES ($1, $2, $3);", p)
+  end
+  c.close
+end
+
+def seed_categories_table
+  categories = [["Clothing", "You wear it."],
+              ["Books", "Read a good book."],
+              ["Movies", "I love good movies."],
+              ["Electronics", "Make sure to charge it."],
+              ["Grocery", "Me so hungry."],
+              ["Health", "Stay fit!"],
+              ["Home", "Where the heart is."],
+              ["Accessories", "Other stuff I own."],
+              ["Office Products", "Let's get to work!"],
+              ["Beauty", "Gotta look good."],
+              ["Travel Accessories", "Let's get outta here."],
+             ]
+
+  c = PGconn.new(:host => "localhost", :dbname => dbname)
+  categories.each do |p|
+    c.exec_params("INSERT INTO categories (name, description) VALUES ($1, $2);", p)
   end
   c.close
 end
